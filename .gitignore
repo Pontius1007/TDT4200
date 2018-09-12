@@ -31,6 +31,10 @@
 *.out
 *.app
 
+./idea
+TDT4200-Assignment-1/.idea/
+TDT4200-Assignment-1/output/*
+
 output/*
 cpurender/*
 CMakeFiles/
