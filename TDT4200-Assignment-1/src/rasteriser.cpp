@@ -232,6 +232,7 @@ void rasteriseTriangles( Mesh &mesh,
 	// Profiling variables:
 	auto byracentric = std::chrono::microseconds(0);
 	auto fragment = std::chrono::microseconds(0);
+	auto Inter = std::chrono::microseconds(0);
 	// We rasterise one triangle at a time
 	unsigned int triangleCount = mesh.indexCount / 3;
 	for(unsigned int triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
@@ -282,10 +283,14 @@ void rasteriseTriangles( Mesh &mesh,
 
 				// But since a pixel can lie anywhere between the vertices, we compute an approximated normal
 				// at the pixel location by interpolating the ones from the vertices.
+				auto startInter = std::chrono::high_resolution_clock::now();
 				float3 *interpolatedNormal = new float3();
 				interpolatedNormal->x = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).x;
 				interpolatedNormal->y = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).y;
 				interpolatedNormal->z = interpolateNormals(*normal0, *normal1, *normal2, weight0, weight1, weight2).z;
+				auto endInter = std::chrono::high_resolution_clock::now();
+				auto timeInter =  std::chrono::duration_cast<std::chrono::microseconds>(endInter - startInter);
+				Inter += timeInter;
 
 				// Cleanup
 				delete normal0;
@@ -303,6 +308,8 @@ void rasteriseTriangles( Mesh &mesh,
 				interpolatedNormal->z /= normalLength;
 
 				// And we can now execute the fragment shader to compute this pixel's colour.
+				//For some reason this does not add up. Rendering a 256x144 sphere took about 3000ms without internal profiling
+				//Now it gives me 5000 milli just for the runFragmentShader
 				auto startFrag = std::chrono::high_resolution_clock::now();
 				std::vector<unsigned char> pixelColour = runFragmentShader(*interpolatedNormal);
 				auto endFrag = std::chrono::high_resolution_clock::now();
@@ -338,6 +345,7 @@ void rasteriseTriangles( Mesh &mesh,
 	// finish the progress output with a new line
 	std::cout << "Execution time for calculating byracentric: " << byracentric.count()/1000 << " ms" << std::endl;
 	std::cout << "Execution time for calculating pixel color: " << fragment.count()/1000<< " ms" << std::endl;
+	std::cout << "Execution time cleaning up Interpolated: " << Inter.count()/1000<< " ms" << std::endl;
 	std::cout << std::endl;
 }
 
