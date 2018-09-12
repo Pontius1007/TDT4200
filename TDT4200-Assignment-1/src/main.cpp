@@ -31,11 +31,7 @@ int main(int argc, char **argv) {
 	}
 
 	std::cout << "Loading '" << input << "' file... " ;
-	auto start = std::chrono::high_resolution_clock::now();
 	Mesh mesh = loadOBJ(input);
-	auto end = std::chrono::high_resolution_clock::now();
-	auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-	std::cout << "Execution time for loading the mesh was: " << time << " ms" << std::endl;
 
 	std::cout << "complete!" << std::endl;
 	if (sse) {
