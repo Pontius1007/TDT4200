@@ -30,3 +30,9 @@
 *.exe
 *.out
 *.app
+
+output/*
+cpurender/*
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
