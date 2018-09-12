@@ -1,6 +1,7 @@
 #include "rasteriser.hpp"
 #include "utilities/lodepng.h"
 #include <vector>
+#include <chrono>
 
 // --- Overview ---
 
@@ -227,6 +228,10 @@ void rasteriseTriangles( Mesh &mesh,
                          unsigned int width,
                          unsigned int height )
 {
+
+	// Profiling variables:
+	auto byracentric = std::chrono::microseconds(0);
+	auto fragment = std::chrono::microseconds(0);
 	// We rasterise one triangle at a time
 	unsigned int triangleCount = mesh.indexCount / 3;
 	for(unsigned int triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
@@ -247,6 +252,7 @@ void rasteriseTriangles( Mesh &mesh,
 
 		// These triangles are still in so-called "clipping space". We first convert them
 		// to screen pixel coordinates
+
 		*vertex0 = convertClippingSpace(*vertex0, width, height);
 		*vertex1 = convertClippingSpace(*vertex1, width, height);
 		*vertex2 = convertClippingSpace(*vertex2, width, height);
@@ -258,9 +264,13 @@ void rasteriseTriangles( Mesh &mesh,
 				unsigned int pixelBaseCoordinate = 4 * (x + y * width);
 
 				// Calculating the barycentric weights of the pixel in relation to the triangle
+				auto startByr = std::chrono::high_resolution_clock::now();
 				float weight0 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).x;
 				float weight1 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).y;
 				float weight2 = getTriangleBarycentricWeights(*vertex0, *vertex1, *vertex2, x, y).z;
+				auto endByr = std::chrono::high_resolution_clock::now();
+				auto timeByr = std::chrono::duration_cast<std::chrono::microseconds>(endByr - startByr);
+				byracentric += timeByr;
 
 				// Now we can determine the depth of our pixel
 				float pixelDepth = getTrianglePixelDepth(*vertex0, *vertex1, *vertex2, weight0, weight1, weight2);
@@ -293,7 +303,11 @@ void rasteriseTriangles( Mesh &mesh,
 				interpolatedNormal->z /= normalLength;
 
 				// And we can now execute the fragment shader to compute this pixel's colour.
+				auto startFrag = std::chrono::high_resolution_clock::now();
 				std::vector<unsigned char> pixelColour = runFragmentShader(*interpolatedNormal);
+				auto endFrag = std::chrono::high_resolution_clock::now();
+				auto timeFrag =  std::chrono::duration_cast<std::chrono::microseconds>(endFrag - startFrag);
+				fragment += timeFrag;
 
 				// Cleanup
 				delete interpolatedNormal;
@@ -322,6 +336,8 @@ void rasteriseTriangles( Mesh &mesh,
 		delete vertex2;
 	}
 	// finish the progress output with a new line
+	std::cout << "Execution time for calculating byracentric: " << byracentric.count()/1000 << " ms" << std::endl;
+	std::cout << "Execution time for calculating pixel color: " << fragment.count()/1000<< " ms" << std::endl;
 	std::cout << std::endl;
 }
 
@@ -366,17 +382,27 @@ void rasterise(Mesh mesh, std::string outputImageFile, unsigned int width, unsig
 
 	std::cout << "Running the vertex shader... ";
 
+	auto startVertex = std::chrono::high_resolution_clock::now();
 	runVertexShader(mesh, transformedVertexBuffer, transformedNormalBuffer);
+	auto endVertex = std::chrono::high_resolution_clock::now();
+	auto timeVertex = std::chrono::duration_cast<std::chrono::milliseconds>(endVertex - startVertex).count();
+	std::cout << "Execution time for running the vertex shader: " << timeVertex << " ms" << std::endl;
 
 	std::cout << "complete!" << std::endl;
 
+
+	auto startRasteriseTriangles = std::chrono::high_resolution_clock::now();
 	rasteriseTriangles(mesh, transformedVertexBuffer, transformedNormalBuffer, frameBuffer, depthBuffer, width, height);
+	auto endRasteriseTriangles = std::chrono::high_resolution_clock::now();
+	auto timeRasteriseTriangles = std::chrono::duration_cast<std::chrono::milliseconds>(endRasteriseTriangles - startRasteriseTriangles).count();
+	std::cout << "Execution time for rasterizing triangles: " << timeRasteriseTriangles << " ms" << std::endl;
 
 	std::cout << "Finished rendering!" << std::endl;
 
 	std::cout << "Writing image to '" << outputImageFile << "'..." << std::endl;
 
 	unsigned error = lodepng::encode(outputImageFile, frameBuffer, width, height);
+
 
 	if(error)
 	{
