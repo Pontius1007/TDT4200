@@ -210,7 +210,6 @@ void rasteriseTriangles( Mesh &mesh,
 
 		// These triangles are still in so-called "clipping space". We first convert them
 		// to screen pixel coordinates
-
 		vertex0 = convertClippingSpace(vertex0, width, height);
 		vertex1 = convertClippingSpace(vertex1, width, height);
 		vertex2 = convertClippingSpace(vertex2, width, height);
@@ -232,7 +231,7 @@ void rasteriseTriangles( Mesh &mesh,
 				weights.x = (((vertex1.y - vertex2.y) * (x - vertex2.x)) + ((vertex2.x - vertex1.x) * (y - vertex2.y))) * denominator;
 				weights.y = (((vertex2.y - vertex0.y) * (x    - vertex2.x)) + ((vertex0.x - vertex2.x) * (y - vertex2.y))) * denominator;
 				weights.z = 1 - weights.x - weights.y;
-				
+
                 //auto endByr = std::chrono::high_resolution_clock::now();
                 //auto timeByr = std::chrono::duration_cast<std::chrono::microseconds>(endByr - startByr);
                 //byracentric += timeByr;
