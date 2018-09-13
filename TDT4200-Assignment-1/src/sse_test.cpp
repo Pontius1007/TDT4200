@@ -3,7 +3,7 @@
 #include <time.h>
 
 float randFloat() {
-    return (float) (rand()) / (float) (RAND_MAX);
+    return ( float) (rand()) / (float ) (RAND_MAX);
 }
 
 sse_float4 randFloat4() {

@@ -34,7 +34,7 @@ union sse_float4 {
     }
 
     bool operator!= (float other) {
-        return (elements[0] != other ) || (elements[1] != other ) || (elements[2] != other) || (elements[3] != other);
+        return ( elements[0] != other ) || (elements[1] != other ) || (elements[2] != other) || (elements[3] != other );
     }
 };
 
