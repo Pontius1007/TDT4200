@@ -6,12 +6,12 @@ float randFloat() {
     return (float) (rand()) / (float) (RAND_MAX);
 }
 
-float4 randFloat4() {
-    float4 res;
-    res.x = randFloat();
-    res.y = randFloat();
-    res.z = randFloat();
-    res.w = randFloat();
+sse_float4 randFloat4() {
+    sse_float4 res;
+    res.elements[0] = randFloat();
+    res.elements[1] = randFloat();
+    res.elements[2] = randFloat();
+    res.elements[3] = randFloat();
     return res;
 }
 
@@ -19,18 +19,21 @@ void sse_test(Mesh &mesh) {
     //Not allowed to change:
     unsigned int const loadFactor = 1000;
     //
-    std::vector<float4> vertices;
-    std::vector<float4> rand1;
-    std::vector<float4> rand2;
-    std::vector<float4> rand3;
-    std::vector<float4> rand4;
+    std::vector<sse_float4> vertices;
+    std::vector<sse_float4> rand1;
+    std::vector<sse_float4> rand2;
+    std::vector<sse_float4> rand3;
+    std::vector<sse_float4> rand4;
     srand(time(NULL));
 
     vertices.resize(mesh.vertexCount);
 
     std::cout << "SSE_TEST: Initializing vectors... " << std::flush;
     for (unsigned int i=0; i < vertices.size(); i++) {
-        vertices[i] = mesh.vertices[i];
+        vertices[i].elements[0] = mesh.vertices[i].x;
+        vertices[i].elements[1] = mesh.vertices[i].y;
+        vertices[i].elements[2] = mesh.vertices[i].z;
+        vertices[i].elements[3] = mesh.vertices[i].w;
         rand1.push_back(randFloat4());
         rand2.push_back(randFloat4());
         rand3.push_back(randFloat4());
