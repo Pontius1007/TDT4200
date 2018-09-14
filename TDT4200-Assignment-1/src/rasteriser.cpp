@@ -87,34 +87,7 @@ void runVertexShader( Mesh &mesh,
  * @return		 colour of the pixel in RGBA
  */
 
-std::vector<unsigned char> runFragmentShader( float3 const normal )
-{
-	std::vector<unsigned char> pixelColour(4);
-	const float3 lightDirection(0.0f, 0.0f, 1.0f);
-
-	// Computing the dot product between the surface normal and a light
-	// direction gives a diffuse-like reflection. It looks more than
-	// good enough for a few static images.
-	float colour = normal.x * lightDirection.x +
-				   normal.y * lightDirection.y +
-				   normal.z * lightDirection.z;
-
-	// We first scale the colour value from a range between 0 and 1,
-	// to between 0 and 255.
-	// Since single bytes are only able to go between 0 and 255,
-	// we subsequently clamp the colour to lie within that range.
-	unsigned char colourByte = (unsigned char) std::min(255.0f,
-														std::max(colour * 255.0f, 0.0f));
-
-	// And this writes the pixel to the pixelColor vector. The first three
-	// channels are red, green, and blue. The fourth represents transparency.
-	pixelColour.at(0) = colourByte;
-	pixelColour.at(1) = colourByte;
-	pixelColour.at(2) = colourByte;
-	pixelColour.at(3) = 255;
-	// This colour vector is supposed to go into the frame buffer
-	return pixelColour;
-}
+//Inlined
 
 
 /**
@@ -131,6 +104,7 @@ std::vector<unsigned char> runFragmentShader( float3 const normal )
  * @return    interpolated normal
  */
 
+//Inlined
 
 /**
  * converts a vertex from clipping space to screen pixel coordinates
@@ -166,6 +140,7 @@ float4 convertClippingSpace( float4 const vertex,
  * @return    barycentric weights of the pixel in relation to the triangle vertices
  */
 
+//Inlined
 
 /**
  * The main procedure which rasterises all triangles on the framebuffer
@@ -190,6 +165,7 @@ void rasteriseTriangles( Mesh &mesh,
 	//auto byracentric = std::chrono::microseconds(0);
 	//auto fragment = std::chrono::microseconds(0);
 	//auto Inter = std::chrono::microseconds(0);
+
 	// We rasterise one triangle at a time
 	unsigned int triangleCount = mesh.indexCount / 3;
 	for(unsigned int triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++) {
@@ -294,14 +270,10 @@ void rasteriseTriangles( Mesh &mesh,
                             interpolatedNormal.z *= normalLength;
 
                             // And we can now execute the fragment shader to compute this pixel's colour.
-                            //For some reason this does not add up. Rendering a 256x144 sphere took about 3000ms without internal profiling
-                            //Now it gives me 5000 milli just for the runFragmentShader
                             //auto startFrag = std::chrono::high_resolution_clock::now();
 
                             //OPTIMALIZATION Inlining fragmentshader
 
-							//std::vector<unsigned char> pixelColour(4);
-							//const float3 lightDirection(0.0f, 0.0f, 1.0f);
 
 							//std::vector<unsigned char> pixelColour = runFragmentShader(interpolatedNormal);
 
