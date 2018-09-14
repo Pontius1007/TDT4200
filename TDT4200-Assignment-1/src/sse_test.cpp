@@ -50,6 +50,29 @@ void sse_test(Mesh &mesh) {
                 vertices[i] = vertices[i] / rand4[i];
             }
         }
+        //This did not yield any speed up. This was used without editing the hpp file, just by using the sse_float4 vector.
+        /*vertices[i].elements[0] = vertices[i].elements[0] + rand1[i].elements[0];
+        vertices[i].elements[1] = vertices[i].elements[1] + rand1[i].elements[1];
+        vertices[i].elements[2] = vertices[i].elements[2] + rand1[i].elements[2];
+        vertices[i].elements[3] = vertices[i].elements[3] + rand1[i].elements[3];
+
+
+        vertices[i].elements[0] = vertices[i].elements[0] - rand2[i].elements[0];
+        vertices[i].elements[1] = vertices[i].elements[1] - rand2[i].elements[1];
+        vertices[i].elements[2] = vertices[i].elements[2] - rand2[i].elements[2];
+        vertices[i].elements[3] = vertices[i].elements[3] - rand2[i].elements[3];
+
+
+        vertices[i].elements[0] = vertices[i].elements[0] * rand3[i].elements[0];
+        vertices[i].elements[1] = vertices[i].elements[1] * rand3[i].elements[1];
+        vertices[i].elements[2] = vertices[i].elements[2] * rand3[i].elements[2];
+        vertices[i].elements[3] = vertices[i].elements[3] * rand3[i].elements[3];
+
+        if (rand4[i].elements[0] != 0 || rand4[i].elements[1] != 0 || rand4[i].elements[2] != 0 || rand4[i].elements[3] != 0){
+            vertices[i].elements[0] = vertices[i].elements[0] / rand4[i].elements[0];
+            vertices[i].elements[1] = vertices[i].elements[1] / rand4[i].elements[1];
+            vertices[i].elements[2] = vertices[i].elements[2] / rand4[i].elements[2];
+            vertices[i].elements[3] = vertices[i].elements[3] / rand4[i].elements[3];*/
     }
     std::cout << std::endl;
 }
