@@ -10,4 +10,5 @@
 std::vector<unsigned char> rasterise( std::vector<Mesh> &meshs,
                                       unsigned int width,
                                       unsigned int height,
-                                      unsigned int depthLimit = 1);
+                                      unsigned int depthLimit = 1,
+                                      float rotationAngle = 0);

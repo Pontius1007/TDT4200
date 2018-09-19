@@ -3,6 +3,7 @@
 #include "utilities/OBJLoader.hpp"
 #include "utilities/lodepng.h"
 #include "rasteriser.hpp"
+#include <mpi.h>
 
 int main(int argc, char **argv) {
 	std::string input("../input/sphere.obj");
@@ -10,6 +11,18 @@ int main(int argc, char **argv) {
 	unsigned int width = 1920;
 	unsigned int height = 1080;
 	unsigned int depth = 3;
+	//Initialize MPI environment
+	MPI_Init(NULL, NULL);
+	//Get number of processes
+	int world_size;
+	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+	// Get the rank of the process
+	int world_rank;
+	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+
+	float rotationAngle = (world_rank) *30;
+    std::cout << "RotationAngle: '" << rotationAngle << std::endl;
+
 
 	for (int i = 1; i < argc; i++) {
 		if (i < argc -1) {
@@ -30,9 +43,17 @@ int main(int argc, char **argv) {
 
 	std::vector<Mesh> meshs = loadWavefront(input, false);
 
-	std::vector<unsigned char> frameBuffer = rasterise(meshs, width, height, depth);
+	std::vector<unsigned char> frameBuffer = rasterise(meshs, width, height, depth, rotationAngle);
+
+	//Give each picture a unique name so we can see the different pictures
+    std::string str = ".";
+    int position = output.find(str);
+    output.insert(position, std::to_string(world_rank));
 
 	std::cout << "Writing image to '" << output << "'..." << std::endl;
+
+	// Finalize the MPI environment.
+	MPI_Finalize();
 
 	unsigned error = lodepng::encode(output, frameBuffer, width, height);
 
