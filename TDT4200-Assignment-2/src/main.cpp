@@ -21,8 +21,6 @@ int main(int argc, char **argv) {
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
 	float rotationAngle = (world_rank) *30;
-    std::cout << "RotationAngle: '" << rotationAngle << std::endl;
-
 
 	for (int i = 1; i < argc; i++) {
 		if (i < argc -1) {
@@ -39,28 +37,27 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	std::cout << "Loading '" << input << "' file... " << std::endl;
+    std::cout << "Loading '" << input << "' file... " << std::endl;
 
-	std::vector<Mesh> meshs = loadWavefront(input, false);
+    std::vector<Mesh> meshs = loadWavefront(input, false);
 
-	std::vector<unsigned char> frameBuffer = rasterise(meshs, width, height, depth, rotationAngle);
+    std::vector<unsigned char> frameBuffer = rasterise(meshs, width, height, depth, rotationAngle);
 
-	//Give each picture a unique name so we can see the different pictures
+    //Give each picture a unique name so we can see the different pictures
     std::string str = ".";
     int position = output.find(str);
     output.insert(position, std::to_string(world_rank));
 
-	std::cout << "Writing image to '" << output << "'..." << std::endl;
+    std::cout << "Writing image to '" << output << "'..." << std::endl;
 
-	// Finalize the MPI environment.
-	MPI_Finalize();
+    // Finalize the MPI environment.
+    MPI_Finalize();
 
-	unsigned error = lodepng::encode(output, frameBuffer, width, height);
+    unsigned error = lodepng::encode(output, frameBuffer, width, height);
 
-	if(error)
-	{
-		std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error) << std::endl;
-	}
-
-	return 0;
+    if(error)
+    {
+        std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error) << std::endl;
+    }
+    return 0;
 }
