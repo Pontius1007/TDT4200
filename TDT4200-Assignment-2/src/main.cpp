@@ -22,6 +22,7 @@ int main(int argc, char **argv) {
 
 	float rotationAngle = (world_rank) *30;
 	float rotationAngleSend = 0;
+	float calc_rotation_angle = world_rank;
 
 	for (int i = 1; i < argc; i++) {
 		if (i < argc -1) {
@@ -43,32 +44,26 @@ int main(int argc, char **argv) {
     std::vector<Mesh> meshs = loadWavefront(input, false);
 
 
+
     //Is this correct? How can we check if it is asking?
     if (world_rank != 0) {
         MPI_Send (
-                &rotationAngleSend, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD
+                &calc_rotation_angle, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD
         );
-    }
-
-    if (world_rank == 0) {
+        MPI_Recv(
+                &rotationAngleSend, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE
+        );
+    } else {
         for (int i = 1; i < world_size; i++) {
             MPI_Recv(
-                    &rotationAngleSend, 1, MPI_FLOAT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE
+                    &calc_rotation_angle, 1, MPI_FLOAT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE
             );
-            rotationAngleSend = i * 30;
+            rotationAngleSend = calc_rotation_angle * 30;
             MPI_Send(
                     &rotationAngleSend, 1, MPI_FLOAT, i, 0, MPI_COMM_WORLD
             );
         }
     }
-
-    if (world_rank != 0) {
-        MPI_Recv(
-                &rotationAngleSend, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE
-        );
-    }
-
-
 
     std::vector<unsigned char> frameBuffer = rasterise(meshs, width, height, depth, rotationAngleSend);
 
