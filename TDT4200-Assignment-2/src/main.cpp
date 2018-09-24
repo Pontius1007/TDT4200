@@ -97,9 +97,9 @@ int main(int argc, char **argv) {
     MPI_Type_create_struct(count_3, blocklengths_3, array_of_displacements_3, types_3, &float3);
 
     for(unsigned int x = 0; x < meshs.size(); x++) {
-        verticestest = meshs.at(x).vertices;
+        verticestest = meshs.at(x).vertices.at(0);
         MPI_Bcast(&verticestest, 1, mpi_float4, 0, MPI_Comm MPI_COMM_WORLD);
-        meshs.at(x).vertices = verticestest;
+        meshs.at(x).vertices.at(0) = verticestest;
     }
 
 
