@@ -4,6 +4,8 @@
 #include "utilities/lodepng.h"
 #include "rasteriser.hpp"
 #include <mpi.h>
+#include "utilities/floats.hpp"
+#include <stddef.h>
 
 int main(int argc, char **argv) {
 	std::string input("../input/sphere.obj");
@@ -11,7 +13,8 @@ int main(int argc, char **argv) {
 	unsigned int width = 1920;
 	unsigned int height = 1080;
 	unsigned int depth = 3;
-	//Initialize MPI environment
+    std::vector<float4> verticestest;
+    //Initialize MPI environment
 	MPI_Init(NULL, NULL);
 	//Get number of processes
 	int world_size;
@@ -20,7 +23,7 @@ int main(int argc, char **argv) {
 	int world_rank;
 	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-	float rotationAngle = (world_rank) *30;
+	//float rotationAngle = (world_rank) *30;
 	float rotationAngleSend = 0;
 	float calc_rotation_angle = world_rank;
 
@@ -42,6 +45,64 @@ int main(int argc, char **argv) {
     std::cout << "Loading '" << input << "' file... " << std::endl;
 
     std::vector<Mesh> meshs = loadWavefront(input, false);
+
+    //Remove verticies, normals and texture arrays for everyone except master
+    if (world_rank != 0) {
+        for(unsigned int i = 0; i < meshs.size(); i++) {
+            for(unsigned int vertex = 0; vertex < meshs.at(i).vertices.size(); vertex++) {
+                meshs.at(i).vertices.at(vertex).x = 0;
+                meshs.at(i).vertices.at(vertex).y = 0;
+                meshs.at(i).vertices.at(vertex).z = 0;
+                meshs.at(i).vertices.at(vertex).w = 0;
+            }
+/*            if (meshs.at(i).hasTextures) {
+                for(unsigned int t = 0; t < meshs.at(i).textures.size(); t++) {
+                    meshs.at(i).textures.at(t).x = 0;
+                    meshs.at(i).textures.at(t).y = 0;
+                    meshs.at(i).textures.at(t).z = 0;
+                }
+            }
+            if (meshs.at(i).hasNormals) {
+                for(unsigned int n = 0; n < meshs.at(i).normals.size(); n++) {
+                    meshs.at(i).normals.at(n).x = 0;
+                    meshs.at(i).normals.at(n).y = 0;
+                    meshs.at(i).normals.at(n).z = 0;
+                }
+            }*/
+        }
+    }
+
+    //Creating the float3 and float4 datastructure
+    //Float4
+    int count = 4;
+    int blocklengths[4] = {1, 1, 1, 1};
+    MPI_Datatype types[4] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT};
+    MPI_Datatype mpi_float4;
+    MPI_Aint    offsets[4];
+
+    offsets[0] = offsetof(float4, x);
+    offsets[1] = offsetof(float4, y);
+    offsets[2] = offsetof(float4, z);
+    offsets[3] = offsetof(float4, w);
+
+    MPI_Type_create_struct(count, blocklengths, offsets, types, &mpi_float4);
+
+    //Float3
+    int count_3 = 3;
+    MPI_Aint array_of_displacements_3[count_3];
+    int blocklengths_3[count_3] = {1, 1, 1};
+    MPI_Datatype types_3[count_3] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT};
+    MPI_Datatype float3;
+
+    MPI_Type_create_struct(count_3, blocklengths_3, array_of_displacements_3, types_3, &float3);
+
+    for(unsigned int x = 0; x < meshs.size(); x++) {
+        verticestest = meshs.at(x).vertices;
+        MPI_Bcast(&verticestest, 1, mpi_float4, 0, MPI_Comm MPI_COMM_WORLD);
+        meshs.at(x).vertices = verticestest;
+    }
+
+
 
 
 
