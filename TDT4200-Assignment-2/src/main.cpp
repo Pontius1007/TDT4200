@@ -15,6 +15,9 @@ int main(int argc, char **argv) {
     unsigned int depth = 3;
 
     std::vector<float4> verticestest;
+    std::vector<float3> texturestest;
+    std::vector<float3> normalstest;
+
     //Initialize MPI environment
     MPI_Init(NULL, NULL);
     //Get number of processes
@@ -56,7 +59,7 @@ int main(int argc, char **argv) {
                 meshs.at(i).vertices.at(vertex).z = 0;
                 meshs.at(i).vertices.at(vertex).w = 0;
             }
-/*            if (meshs.at(i).hasTextures) {
+            if (meshs.at(i).hasTextures) {
                 for(unsigned int t = 0; t < meshs.at(i).textures.size(); t++) {
                     meshs.at(i).textures.at(t).x = 0;
                     meshs.at(i).textures.at(t).y = 0;
@@ -69,7 +72,7 @@ int main(int argc, char **argv) {
                     meshs.at(i).normals.at(n).y = 0;
                     meshs.at(i).normals.at(n).z = 0;
                 }
-            }*/
+            }
         }
     }
 
@@ -91,19 +94,33 @@ int main(int argc, char **argv) {
 
     //Float3
     int count_3 = 3;
-    MPI_Aint array_of_displacements_3[count_3];
-    int blocklengths_3[count_3] = {1, 1, 1};
-    MPI_Datatype types_3[count_3] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT};
+    MPI_Aint offsets_3[3];
+    int blocklengths_3[3] = {1, 1, 1};
+    MPI_Datatype types_3[3] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT};
     MPI_Datatype MPI_FLOAT3;
 
-    MPI_Type_create_struct(count_3, blocklengths_3, array_of_displacements_3, types_3, &MPI_FLOAT3);
+    offsets_3[0] = offsetof(float3, x);
+    offsets_3[1] = offsetof(float3, y);
+    offsets_3[2] = offsetof(float3, z);
+
+    MPI_Type_create_struct(count_3, blocklengths_3, offsets_3, types_3, &MPI_FLOAT3);
     MPI_Type_commit(&MPI_FLOAT3);
 
     //Send the value. This is not correct.
     for (unsigned int x = 0; x < meshs.size(); x++) {
         verticestest = meshs.at(x).vertices;
-        MPI_Bcast(&verticestest, verticestest.size(), MPI_FLOAT4, 0, MPI_COMM_WORLD);
+        texturestest = meshs.at(x).textures;
+        normalstest = meshs.at(x).normals;
+
+        MPI_Bcast(&verticestest.front(), verticestest.size(), MPI_FLOAT4, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&texturestest.front(), texturestest.size(), MPI_FLOAT3, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&normalstest.front(), normalstest.size(), MPI_FLOAT3, 0, MPI_COMM_WORLD);
+
+        MPI_Barrier(MPI_COMM_WORLD);
+
         meshs.at(x).vertices = verticestest;
+        meshs.at(x).textures = texturestest;
+        meshs.at(x).normals = normalstest;
     }
 
 
