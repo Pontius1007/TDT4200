@@ -8,48 +8,49 @@
 #include <stddef.h>
 
 int main(int argc, char **argv) {
-	std::string input("../input/sphere.obj");
-	std::string output("../output/sphere.png");
-	unsigned int width = 1920;
-	unsigned int height = 1080;
-	unsigned int depth = 3;
-    std::vector<float4> verticestest;
+    std::string input("../input/sphere.obj");
+    std::string output("../output/sphere.png");
+    unsigned int width = 1920;
+    unsigned int height = 1080;
+    unsigned int depth = 3;
+
+    float4 verticestest;
     //Initialize MPI environment
-	MPI_Init(NULL, NULL);
-	//Get number of processes
-	int world_size;
-	MPI_Comm_size(MPI_COMM_WORLD, &world_size);
-	// Get the rank of the process
-	int world_rank;
-	MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    MPI_Init(NULL, NULL);
+    //Get number of processes
+    int world_size;
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    // Get the rank of the process
+    int world_rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
 
-	//float rotationAngle = (world_rank) *30;
-	float rotationAngleSend = 0;
-	float calc_rotation_angle = world_rank;
+    //float rotationAngle = (world_rank) *30;
+    float rotationAngleSend = 0;
+    float calc_rotation_angle = world_rank;
 
-	for (int i = 1; i < argc; i++) {
-		if (i < argc -1) {
-			if (std::strcmp("-i", argv[i]) == 0) {
-				input = argv[i+1];
-			} else if (std::strcmp("-o", argv[i]) == 0) {
-				output = argv[i+1];
-			} else if (std::strcmp("-w", argv[i]) == 0) {
-				width = (unsigned int) std::stoul(argv[i+1]);
-			} else if (std::strcmp("-h", argv[i]) == 0) {
-				height = (unsigned int) std::stoul(argv[i+1]);
-			} else if (std::strcmp("-d", argv[i]) == 0) {
-				depth = (int) std::stoul(argv[i+1]);
-			}
-		}
-	}
+    for (int i = 1; i < argc; i++) {
+        if (i < argc - 1) {
+            if (std::strcmp("-i", argv[i]) == 0) {
+                input = argv[i + 1];
+            } else if (std::strcmp("-o", argv[i]) == 0) {
+                output = argv[i + 1];
+            } else if (std::strcmp("-w", argv[i]) == 0) {
+                width = (unsigned int) std::stoul(argv[i + 1]);
+            } else if (std::strcmp("-h", argv[i]) == 0) {
+                height = (unsigned int) std::stoul(argv[i + 1]);
+            } else if (std::strcmp("-d", argv[i]) == 0) {
+                depth = (int) std::stoul(argv[i + 1]);
+            }
+        }
+    }
     std::cout << "Loading '" << input << "' file... " << std::endl;
 
-    std::vector<Mesh> meshs = loadWavefront(input, false);
+    std::vector <Mesh> meshs = loadWavefront(input, false);
 
     //Remove verticies, normals and texture arrays for everyone except master
     if (world_rank != 0) {
-        for(unsigned int i = 0; i < meshs.size(); i++) {
-            for(unsigned int vertex = 0; vertex < meshs.at(i).vertices.size(); vertex++) {
+        for (unsigned int i = 0; i < meshs.size(); i++) {
+            for (unsigned int vertex = 0; vertex < meshs.at(i).vertices.size(); vertex++) {
                 meshs.at(i).vertices.at(vertex).x = 0;
                 meshs.at(i).vertices.at(vertex).y = 0;
                 meshs.at(i).vertices.at(vertex).z = 0;
@@ -78,7 +79,7 @@ int main(int argc, char **argv) {
     int blocklengths[4] = {1, 1, 1, 1};
     MPI_Datatype types[4] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT};
     MPI_Datatype mpi_float4;
-    MPI_Aint    offsets[4];
+    MPI_Aint offsets[4];
 
     offsets[0] = offsetof(float4, x);
     offsets[1] = offsetof(float4, y);
@@ -96,10 +97,13 @@ int main(int argc, char **argv) {
 
     MPI_Type_create_struct(count_3, blocklengths_3, array_of_displacements_3, types_3, &float3);
 
-    for(unsigned int x = 0; x < meshs.size(); x++) {
-        verticestest = meshs.at(x).vertices.at(0);
-        MPI_Bcast(&verticestest, 1, mpi_float4, 0, MPI_Comm MPI_COMM_WORLD);
-        meshs.at(x).vertices.at(0) = verticestest;
+    //Send the value. This is not correct
+    for (unsigned int x = 0; x < meshs.size(); x++) {
+        for (unsigned int vertex = 0; vertex < meshs.at(x).vertices.size(); vertex++) {
+            verticestest = meshs.at(x).vertices.at(vertex);
+            MPI_Bcast(&verticestest, 4, MPI_FLOAT, 0, MPI_COMM_WORLD);
+            meshs.at(x).vertices.at(vertex) = verticestest;
+        }
     }
 
 
@@ -108,7 +112,7 @@ int main(int argc, char **argv) {
 
     //Is this correct? How can we check if it is asking?
     if (world_rank != 0) {
-        MPI_Send (
+        MPI_Send(
                 &calc_rotation_angle, 1, MPI_FLOAT, 0, 0, MPI_COMM_WORLD
         );
         MPI_Recv(
@@ -140,9 +144,9 @@ int main(int argc, char **argv) {
 
     unsigned error = lodepng::encode(output, frameBuffer, width, height);
 
-    if(error)
-    {
-        std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error) << std::endl;
+    if (error) {
+        std::cout << "An error occurred while writing the image file: " << error << ": " << lodepng_error_text(error)
+                  << std::endl;
     }
     return 0;
 }
