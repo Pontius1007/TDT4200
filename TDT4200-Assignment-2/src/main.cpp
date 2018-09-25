@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
     unsigned int height = 1080;
     unsigned int depth = 3;
 
-    float4 verticestest;
+    std::vector<float4> verticestest;
     //Initialize MPI environment
     MPI_Init(NULL, NULL);
     //Get number of processes
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
     int count = 4;
     int blocklengths[4] = {1, 1, 1, 1};
     MPI_Datatype types[4] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT, MPI_FLOAT};
-    MPI_Datatype mpi_float4;
+    MPI_Datatype MPI_FLOAT4;
     MPI_Aint offsets[4];
 
     offsets[0] = offsetof(float4, x);
@@ -86,24 +86,24 @@ int main(int argc, char **argv) {
     offsets[2] = offsetof(float4, z);
     offsets[3] = offsetof(float4, w);
 
-    MPI_Type_create_struct(count, blocklengths, offsets, types, &mpi_float4);
+    MPI_Type_create_struct(count, blocklengths, offsets, types, &MPI_FLOAT4);
+    MPI_Type_commit(&MPI_FLOAT4);
 
     //Float3
     int count_3 = 3;
     MPI_Aint array_of_displacements_3[count_3];
     int blocklengths_3[count_3] = {1, 1, 1};
     MPI_Datatype types_3[count_3] = {MPI_FLOAT, MPI_FLOAT, MPI_FLOAT};
-    MPI_Datatype float3;
+    MPI_Datatype MPI_FLOAT3;
 
-    MPI_Type_create_struct(count_3, blocklengths_3, array_of_displacements_3, types_3, &float3);
+    MPI_Type_create_struct(count_3, blocklengths_3, array_of_displacements_3, types_3, &MPI_FLOAT3);
+    MPI_Type_commit(&MPI_FLOAT3);
 
-    //Send the value. This is not correct
+    //Send the value. This is not correct.
     for (unsigned int x = 0; x < meshs.size(); x++) {
-        for (unsigned int vertex = 0; vertex < meshs.at(x).vertices.size(); vertex++) {
-            verticestest = meshs.at(x).vertices.at(vertex);
-            MPI_Bcast(&verticestest, 4, MPI_FLOAT, 0, MPI_COMM_WORLD);
-            meshs.at(x).vertices.at(vertex) = verticestest;
-        }
+        verticestest = meshs.at(x).vertices;
+        MPI_Bcast(&verticestest, verticestest.size(), MPI_FLOAT4, 0, MPI_COMM_WORLD);
+        meshs.at(x).vertices = verticestest;
     }
 
 
