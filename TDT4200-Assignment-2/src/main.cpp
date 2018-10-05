@@ -106,7 +106,7 @@ int main(int argc, char **argv) {
     MPI_Type_create_struct(count_3, blocklengths_3, offsets_3, types_3, &MPI_FLOAT3);
     MPI_Type_commit(&MPI_FLOAT3);
 
-    //Send the value. This is not correct.
+    //Send the value
     for (unsigned int x = 0; x < meshs.size(); x++) {
         verticestest = meshs.at(x).vertices;
         texturestest = meshs.at(x).textures;
@@ -122,10 +122,6 @@ int main(int argc, char **argv) {
         meshs.at(x).textures = texturestest;
         meshs.at(x).normals = normalstest;
     }
-
-
-
-
 
     //Is this correct? How can we check if it is asking?
     if (world_rank != 0) {
@@ -147,7 +143,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    std::vector<unsigned char> frameBuffer = rasterise(meshs, width, height, depth, rotationAngleSend);
+    std::vector<unsigned char> frameBuffer = rasterise(meshs, width, height, depth, rotationAngleSend,
+            world_rank, world_size);
 
     //Give each picture a unique name so we can see the different pictures
     std::string str = ".";

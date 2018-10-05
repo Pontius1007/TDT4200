@@ -1,9 +1,12 @@
 #include "rasteriser.hpp"
 #include "utilities/lodepng.h"
+#include <mpi.h>
 #include <vector>
 #include <iomanip>
 #include <chrono>
 #include <limits>
+#include "utilities/floats.hpp"
+#include <stddef.h>
 
 const std::vector<globalLight> lightSources = { {{0.3f, 0.5f, 1.0f}, {1.0f, 1.0f, 1.0f}} };
 
@@ -13,6 +16,7 @@ typedef struct perfCounter {
 } perfCounter;
 
 perfCounter counter = {};
+
 
 void runVertexShader( Mesh &mesh,
                       Mesh &transformedMesh,
@@ -192,9 +196,68 @@ void renderMeshFractal(
 
 }
 
+void renderMeshFractal_Iterator(
+        std::vector<Mesh> &meshes,
+        std::vector<Mesh> &transformedMeshes,
+        unsigned int width,
+        unsigned int height,
+        std::vector<unsigned char> &frameBuffer,
+        std::vector<float> &depthBuffer,
+        float largestBoundingBoxSide,
+        int depthLimit,
+        unsigned int worldRank,
+        unsigned int worldSize,
+        int &(index),
+        float rotationAngle = 0,
+        float scale = 1.0,
+        float3 distanceOffset = {0, 0, 0} ) {
+
+    // Start by rendering the mesh at this depth
+    for (unsigned int i = 0; i < meshes.size(); i++) {
+        //check if current mesh is this ranks mesh
+        if(index%worldSize == worldRank){
+            Mesh &mesh = meshes.at(i);
+            Mesh &transformedMesh = transformedMeshes.at(i);
+            runVertexShader(mesh, transformedMesh, distanceOffset, scale, width, height, rotationAngle);
+            rasteriseTriangles(transformedMesh, frameBuffer, depthBuffer, width, height);
+        }
+        index++;
+    }
+
+    // Check whether we've reached the recursive depth of the fractal we want to reach
+    depthLimit--;
+    if(depthLimit == 0) {
+        return;
+    }
+
+    // Now we recursively draw the meshes in a smaller size
+    for(int offsetX = -1; offsetX <= 1; offsetX++) {
+        for(int offsetY = -1; offsetY <= 1; offsetY++) {
+            for(int offsetZ = -1; offsetZ <= 1; offsetZ++) {
+                float3 offset(offsetX,offsetY,offsetZ);
+                // We draw the new objects in a grid around the "main" one.
+                // We thus skip the location of the object itself.
+                if(offset == 0) {
+                    continue;
+                }
+
+                float smallerScale = scale / 3.0;
+                float3 displacedOffset(
+                        distanceOffset + offset * (largestBoundingBoxSide / 2.0f) * scale
+                );
+
+                renderMeshFractal_Iterator(meshes, transformedMeshes, width, height, frameBuffer, depthBuffer,
+                        largestBoundingBoxSide, depthLimit, worldRank, worldSize, index,
+                        rotationAngle, smallerScale, displacedOffset);
+            }
+        }
+    }
+
+}
+
 // This function kicks off the rasterisation process.
 std::vector<unsigned char> rasterise(std::vector<Mesh> &meshes, unsigned int width, unsigned int height, unsigned int depthLimit,
-									 float rotationAngle) {
+									 float rotationAngle, unsigned int worldRank, unsigned int worldSize ) {
 	// We first need to allocate some buffers.
 	// The framebuffer contains the image being rendered.
 	std::vector<unsigned char> frameBuffer;
@@ -229,8 +292,10 @@ std::vector<unsigned char> rasterise(std::vector<Mesh> &meshes, unsigned int wid
 	float3 boundingBoxDimensions = boundingBoxMax - boundingBoxMin;
 	float largestBoundingBoxSide = std::max(std::max(boundingBoxDimensions.x, boundingBoxDimensions.y), boundingBoxDimensions.z);
 
-
-	renderMeshFractal(meshes, transformedMeshes, width, height, frameBuffer, depthBuffer, largestBoundingBoxSide, depthLimit, rotationAngle);//depthLimit);
+    int meshIndex = 0;
+	renderMeshFractal_Iterator(meshes, transformedMeshes, width, height, frameBuffer, depthBuffer, largestBoundingBoxSide,
+	        depthLimit, worldRank, worldSize, meshIndex,
+	        rotationAngle);//depthLimit);
 
 
 	std::cout << "finished!" << std::endl;
