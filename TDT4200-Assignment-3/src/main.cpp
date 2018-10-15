@@ -1,4 +1,4 @@
-
+#include <thread>
 #include <getopt.h>
 #include <iostream>
 #include <cmath>
@@ -363,7 +363,14 @@ int main( int argc, char *argv[] )
 		marianiSilver(dwellBuffer, cmin, dc, 0, 0, correctedBlockSize);
 	} else {
 		// Traditional Mandelbrot-Set computation or the 'Escape Time' algorithm
-		computeBlock(dwellBuffer, cmin, dc, 0, 0, res, 0);
+		int numberOfThreads = std::thread::hardware_concurrency();
+		std::thread threads[numberOfThreads];
+        for(int i = 0; i < numberOfThreads; i++) {
+            threads[i] = std::thread(computeBlock, std::ref(dwellBuffer), cmin, dc, 0, 0, res, 0);
+        }
+        for(int i=0; i < numberOfThreads; i++) {
+            threads[i].join();
+        }
 		if (mark)
 			markBorder(dwellBuffer, dwellCompute, 0, 0, res);
 	}
