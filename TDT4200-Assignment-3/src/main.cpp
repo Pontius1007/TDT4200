@@ -148,7 +148,7 @@ void markBorder(std::vector<std::vector<int>> &dwellBuffer,
 	}
 }
 
-// Currently the same as computeBlock
+// Currently not the same as computeBlock
 void threadedComputeBlock(std::vector<std::vector<int>> &dwellBuffer,
 	std::complex<double> const &cmin,
 	std::complex<double> const &dc,
@@ -157,7 +157,7 @@ void threadedComputeBlock(std::vector<std::vector<int>> &dwellBuffer,
 	unsigned int const blockSize,
 	unsigned int const omitBorder = 0)
 {
-	unsigned int const yMax = (res > atY + blockSize) ? atY + blockSize : res;
+	unsigned int const yMax = res;
 	unsigned int const xMax = (res > atX + blockSize) ? atX + blockSize : res;
 	for (unsigned int y = atY + omitBorder; y < yMax - omitBorder; y++) {
 		for (unsigned int x = atX + omitBorder; x < xMax - omitBorder; x++) {
@@ -352,7 +352,6 @@ int main( int argc, char *argv[] )
 	}
 
 	std::vector<std::vector<int>> dwellBuffer(res, std::vector<int>(res, -1));
-
 	if (mariani) {
 		// Scale the blockSize from res up to a subdividable value
 		// Number of possible subdivisions:
@@ -365,8 +364,11 @@ int main( int argc, char *argv[] )
 		// Traditional Mandelbrot-Set computation or the 'Escape Time' algorithm
 		int numberOfThreads = std::thread::hardware_concurrency();
 		std::thread threads[numberOfThreads];
+        int xStart = 0;
         for(int i = 0; i < numberOfThreads; i++) {
-            threads[i] = std::thread(computeBlock, std::ref(dwellBuffer), cmin, dc, 0, 0, res, 0);
+            threads[i] = std::thread(threadedComputeBlock, std::ref(dwellBuffer), cmin, dc, 0, xStart, res/numberOfThreads, 0);
+            std::cout << xStart << std::endl;
+            xStart += res/numberOfThreads;
         }
         for(int i=0; i < numberOfThreads; i++) {
             threads[i].join();
