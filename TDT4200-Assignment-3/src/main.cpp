@@ -227,7 +227,20 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
 					unsigned int const atX,
 					unsigned int const blockSize)
 {
+    // The dwell needs to be atomic. Use futures to store return variable
+    // On thread for each side
+    std::thread threads[4];
+    int dwell = 0;
+    for(i = 0; i < 4; i++) {
+
+        threads[i] = std::thread(commonBorder, std::ref(dwellBuffer), cmin, dc, atY, atX, blockSize);
+        dwell += threads[i]
+
+    }
 	int dwell = commonBorder(dwellBuffer, cmin, dc, atY, atX, blockSize);
+
+
+
 	if ( dwell >= 0 ) {
 		fillBlock(dwellBuffer, dwell, atY, atX, blockSize);
 		if (mark)
