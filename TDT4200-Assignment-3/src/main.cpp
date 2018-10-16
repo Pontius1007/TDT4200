@@ -105,27 +105,26 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 				 std::complex<double> const &dc,
 				 unsigned int const atY,
 				 unsigned int const atX,
-				 unsigned int const blockSize)
+				 unsigned int const blockSize,
+				 unsigned int const s)
 {
 	unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
 	unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
 	std::atomic<int> commonDwell (-1);
 	for (unsigned int i = 0; i < blockSize; i++) {
-		for (unsigned int s = 0; s < 4; s++) {
-			unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
-			unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
-			int commonDwell_loaded = std::atomic_load(&commonDwell);
-			if (y < res && x < res) {
-				if (dwellBuffer.at(y).at(x) < 0) {
-					dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
-				}
-				if (commonDwell_loaded == -1) {
-					std::atomic_store(&commonDwell, dwellBuffer.at(y).at(x));
-				} else if (commonDwell_loaded != dwellBuffer.at(y).at(x)) {
-					return -1;
-				}
-			}
-		}
+        unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
+        unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
+        int commonDwell_loaded = std::atomic_load();
+        if (y < res && x < res) {
+            if (dwellBuffer.at(y).at(x) < 0) {
+                dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
+            }
+            if (commonDwell_loaded == -1) {
+                std::atomic_store(&commonDwell, dwellBuffer.at(y).at(x));
+            } else if (commonDwell_loaded != dwellBuffer.at(y).at(x)) {
+                return -1;
+            }
+        }
 	}
 	return std::atomic_load(&commonDwell);
 }
@@ -233,7 +232,7 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
     std::thread threads[4];
     int dwell = 0;
     for(int i = 0; i < 4; i++) {
-        threads[i] = std::thread(commonBorder, std::ref(dwellBuffer), cmin, dc, atY, atX, blockSize);
+        threads[i] = std::thread(commonBorder, std::ref(dwellBuffer), cmin, dc, atY, atX, blockSize, i);
     }
     for(int i=0; i < 4; i++) {
     threads[i].join();
