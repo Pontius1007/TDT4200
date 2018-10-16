@@ -109,24 +109,25 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 {
 	unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
 	unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
-	int commonDwell = -1;
+	std::atomic<int> commonDwell (-1);
 	for (unsigned int i = 0; i < blockSize; i++) {
 		for (unsigned int s = 0; s < 4; s++) {
 			unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
 			unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
+			int commonDwell_loaded = std::atomic_load(&commonDwell);
 			if (y < res && x < res) {
 				if (dwellBuffer.at(y).at(x) < 0) {
 					dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
 				}
-				if (commonDwell == -1) {
-					commonDwell = dwellBuffer.at(y).at(x);
-				} else if (commonDwell != dwellBuffer.at(y).at(x)) {
+				if (commonDwell_loaded == -1) {
+					std::atomic_store(&commonDwell, dwellBuffer.at(y).at(x));
+				} else if (commonDwell_loaded != dwellBuffer.at(y).at(x)) {
 					return -1;
 				}
 			}
 		}
 	}
-	return commonDwell;
+	return std::atomic_load(&commonDwell);
 }
 
 void markBorder(std::vector<std::vector<int>> &dwellBuffer,
@@ -231,13 +232,14 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
     // On thread for each side
     std::thread threads[4];
     int dwell = 0;
-    for(i = 0; i < 4; i++) {
-
+    for(int i = 0; i < 4; i++) {
         threads[i] = std::thread(commonBorder, std::ref(dwellBuffer), cmin, dc, atY, atX, blockSize);
-        dwell += threads[i]
-
     }
-	int dwell = commonBorder(dwellBuffer, cmin, dc, atY, atX, blockSize);
+    for(int i=0; i < 4; i++) {
+    threads[i].join();
+    }
+
+	//int dwell = commonBorder(dwellBuffer, cmin, dc, atY, atX, blockSize);
 
 
 
