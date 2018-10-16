@@ -130,6 +130,7 @@ void commonBorder(std::vector<std::vector<int>> &dwellBuffer,
                     // Her vil vi muligens få en bug ved at andre threads ikke blir stoppet selv om de burde
                     commonDwell = -1;
                     commonTest = true;
+                    break;
                 }
             }
         }
