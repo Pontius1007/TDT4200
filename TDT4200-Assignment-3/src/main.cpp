@@ -102,35 +102,39 @@ unsigned int pixelDwell(std::complex<double> const &cmin,
 
 
 std::atomic<int> commonDwell {-1};
+std::atomic<bool> commonTest {false};
 
-int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
+void commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 				 std::complex<double> const &cmin,
 				 std::complex<double> const &dc,
 				 unsigned int const atY,
 				 unsigned int const atX,
-				 unsigned int const blockSize)
+				 unsigned int const blockSize,
+				 unsigned int const side)
 {
 	unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
 	unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
+	commonDwell = -1;
 	for (unsigned int i = 0; i < blockSize; i++) {
-		for (unsigned int s = 0; s < 4; s++) {
-			unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
-			unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
-			if (y < res && x < res) {
-				if (dwellBuffer.at(y).at(x) < 0) {
-					dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
-				}
-				if (commonDwell == -1) {
-					commonDwell = dwellBuffer.at(y).at(x);
-				} else if (commonDwell != dwellBuffer.at(y).at(x)) {
-				    // Her vil vi muligens få en bug ved at andre threads ikke blir stoppet selv om de burde
-				    commonDwell = -1;
-					return -1;
-				}
-			}
-		}
+        int s = side;
+        unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
+        unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
+        if (!commonTest) {
+            if (y < res && x < res) {
+                if (dwellBuffer.at(y).at(x) < 0) {
+                    dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
+                }
+                if (commonDwell == -1) {
+                    commonDwell = dwellBuffer.at(y).at(x);
+                } else if (commonDwell != dwellBuffer.at(y).at(x)) {
+                    // Her vil vi muligens få en bug ved at andre threads ikke blir stoppet selv om de burde
+                    commonDwell = -1;
+                    commonTest = true;
+                    break;
+                }
+            }
+        }
 	}
-	return commonDwell;
 }
 
 void markBorder(std::vector<std::vector<int>> &dwellBuffer,
@@ -231,11 +235,10 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
 					unsigned int const atX,
 					unsigned int const blockSize)
 {
-    // The dwell needs to be atomic. Use futures to store return variable
     // On thread for each side
     std::thread threads[4];
     for(int i = 0; i < 4; i++) {
-        threads[i] = std::thread(commonBorder, std::ref(dwellBuffer), cmin, dc, atY, atX, blockSize);
+        threads[i] = std::thread(commonBorder, std::ref(dwellBuffer), std::ref(cmin), std::ref(dc), atY, atX, blockSize, i);
     }
 
     for(int i=0; i < 4; i++) {
@@ -245,6 +248,10 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
 
 	// int dwell = commonBorder(dwellBuffer, cmin, dc, atY, atX, blockSize);
 	int dwell = commonDwell;
+    if (commonTest) {
+        dwell = -1;
+    }
+    commonTest = false;
 
 
 
