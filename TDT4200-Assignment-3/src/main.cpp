@@ -104,7 +104,7 @@ unsigned int pixelDwell(std::complex<double> const &cmin,
 std::atomic<int> commonDwell {-1};
 std::atomic<bool> commonTest {false};
 
-int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
+void commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 				 std::complex<double> const &cmin,
 				 std::complex<double> const &dc,
 				 unsigned int const atY,
@@ -115,7 +115,6 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 	unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
 	unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
 	for (unsigned int i = 0; i < blockSize; i++) {
-		//for (unsigned int s = 0; s < 4; s++) {
         int s = side;
         unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
         unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
@@ -130,12 +129,10 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
                     // Her vil vi muligens få en bug ved at andre threads ikke blir stoppet selv om de burde
                     commonDwell = -1;
                     commonTest = true;
-                    return -1;
                 }
             }
         }
 	}
-	return commonDwell;
 }
 
 void markBorder(std::vector<std::vector<int>> &dwellBuffer,
