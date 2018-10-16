@@ -114,6 +114,7 @@ void commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 {
 	unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
 	unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
+	commonDwell = -1;
 	for (unsigned int i = 0; i < blockSize; i++) {
         int s = side;
         unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
@@ -233,7 +234,6 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
 					unsigned int const atX,
 					unsigned int const blockSize)
 {
-    // The dwell needs to be atomic. Use futures to store return variable
     // On thread for each side
     std::thread threads[4];
     for(int i = 0; i < 4; i++) {
