@@ -100,6 +100,9 @@ unsigned int pixelDwell(std::complex<double> const &cmin,
 	return dwell;
 }
 
+
+std::atomic<int> commonDwell {-1};
+
 int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 				 std::complex<double> const &cmin,
 				 std::complex<double> const &dc,
@@ -109,7 +112,6 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 {
 	unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
 	unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
-	int commonDwell = -1;
 	for (unsigned int i = 0; i < blockSize; i++) {
 		for (unsigned int s = 0; s < 4; s++) {
 			unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
@@ -121,6 +123,8 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
 				if (commonDwell == -1) {
 					commonDwell = dwellBuffer.at(y).at(x);
 				} else if (commonDwell != dwellBuffer.at(y).at(x)) {
+				    // Her vil vi muligens få en bug ved at andre threads ikke blir stoppet selv om de burde
+				    commonDwell = -1;
 					return -1;
 				}
 			}
@@ -230,14 +234,17 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
     // The dwell needs to be atomic. Use futures to store return variable
     // On thread for each side
     std::thread threads[4];
-    int dwell = 0;
-    for(i = 0; i < 4; i++) {
-
+    for(int i = 0; i < 4; i++) {
         threads[i] = std::thread(commonBorder, std::ref(dwellBuffer), cmin, dc, atY, atX, blockSize);
-        dwell += threads[i]
-
     }
-	int dwell = commonBorder(dwellBuffer, cmin, dc, atY, atX, blockSize);
+
+    for(int i=0; i < 4; i++) {
+        threads[i].join();
+    }
+
+
+	// int dwell = commonBorder(dwellBuffer, cmin, dc, atY, atX, blockSize);
+	int dwell = commonDwell;
 
 
 
