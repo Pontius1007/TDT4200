@@ -110,18 +110,24 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
     unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
     unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
     int commonDwell = -1;
+    bool abort = 0;
+    #pragma omp parallel for
     for (unsigned int i = 0; i < blockSize; i++) {
         for (unsigned int s = 0; s < 4; s++) {
             unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
             unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
-            if (y < res && x < res) {
-                if (dwellBuffer.at(y).at(x) < 0) {
-                    dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
-                }
-                if (commonDwell == -1) {
-                    commonDwell = dwellBuffer.at(y).at(x);
-                } else if (commonDwell != dwellBuffer.at(y).at(x)) {
-                    return -1;
+            if(!abort){
+                if (y < res && x < res) {
+                    if (dwellBuffer.at(y).at(x) < 0) {
+                        dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
+                    }
+                    if (commonDwell == -1) {
+                        commonDwell = dwellBuffer.at(y).at(x);
+                    }
+                    else if (commonDwell != dwellBuffer.at(y).at(x)) {
+                        abort = 1;
+                        commonDwell = -1;
+                    }
                 }
             }
         }
@@ -137,6 +143,7 @@ void markBorder(std::vector<std::vector<int>> &dwellBuffer,
 {
     unsigned int const yMax = (res > atY + blockSize - 1) ? atY + blockSize - 1 : res - 1;
     unsigned int const xMax = (res > atX + blockSize - 1) ? atX + blockSize - 1 : res - 1;
+    #pragma omp parallel for
     for (unsigned int i = 0; i < blockSize; i++) {
         for (unsigned int s = 0; s < 4; s++) {
             unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
@@ -159,6 +166,7 @@ void threadedComputeBlock(std::vector<std::vector<int>> &dwellBuffer,
 {
     unsigned int const yMax = (res > atY + blockSize) ? atY + blockSize : res;
     unsigned int const xMax = (res > atX + blockSize) ? atX + blockSize : res;
+    #pragma omp parallel for
     for (unsigned int y = atY + omitBorder; y < yMax - omitBorder; y++) {
         for (unsigned int x = atX + omitBorder; x < xMax - omitBorder; x++) {
             dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
@@ -176,6 +184,7 @@ void computeBlock(std::vector<std::vector<int>> &dwellBuffer,
 {
     unsigned int const yMax = (res > atY + blockSize) ? atY + blockSize : res;
     unsigned int const xMax = (res > atX + blockSize) ? atX + blockSize : res;
+    #pragma omp parallel for
     for (unsigned int y = atY + omitBorder; y < yMax - omitBorder; y++) {
         for (unsigned int x = atX + omitBorder; x < xMax - omitBorder; x++) {
             dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
@@ -192,6 +201,7 @@ void fillBlock(std::vector<std::vector<int>> &dwellBuffer,
 {
     unsigned int const yMax = (res > atY + blockSize) ? atY + blockSize : res;
     unsigned int const xMax = (res > atX + blockSize) ? atX + blockSize : res;
+    #pragma omp parallel for
     for (unsigned int y = atY + omitBorder; y < yMax - omitBorder; y++) {
         for (unsigned int x = atX + omitBorder; x < xMax - omitBorder; x++) {
             if (dwellBuffer.at(y).at(x) < 0) {
@@ -214,28 +224,9 @@ typedef struct job {
 } job;
 
 // define mutex, condition variable and deque here
-static std::deque<job> jobs;
-std::mutex mut;
-std::condition_variable cv;
 
-void addWork(
-        std::vector<std::vector<int>> &dwellBuffer,
-        std::complex<double> const &cmin,
-        std::complex<double> const &dc,
-        unsigned int const atY,
-        unsigned int const atX,
-        unsigned int const blockSize)
-
+void addWork(/* parameters */)
 {
-    job addJob = {
-            dwellBuffer,
-            cmin,
-            dc,
-            atY,
-            atX,
-            blockSize
-    };
-    jobs.push_back(addJob);
 
 }
 
@@ -260,7 +251,7 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
         unsigned int newBlockSize = blockSize / subDiv;
         for (unsigned int ydiv = 0; ydiv < subDiv; ydiv++) {
             for (unsigned int xdiv = 0; xdiv < subDiv; xdiv++) {
-                addWork(dwellBuffer, cmin, dc, atY + (ydiv * newBlockSize), atX + (xdiv * newBlockSize), newBlockSize);
+                marianiSilver(dwellBuffer, cmin, dc, atY + (ydiv * newBlockSize), atX + (xdiv * newBlockSize), newBlockSize);
             }
         }
     }
@@ -282,11 +273,7 @@ void help() {
 }
 
 void worker(void) {
-    while(jobs.size()) {
-        job workJob = jobs.front();
-        jobs.pop_front();
-        marianiSilver(workJob.dwellBuffer, workJob.cmin, workJob.dc, workJob.atY, workJob.atX, workJob.blockSize);
-    }
+    // Currently I'm doing nothing
 }
 
 int main( int argc, char *argv[] )
@@ -383,8 +370,7 @@ int main( int argc, char *argv[] )
         // Calculate a dividable resolution for the blockSize:
         unsigned int const correctedBlockSize = std::pow(subDiv,numDiv) * blockDim;
         // Mariani-Silver subdivision algorithm
-        addWork(dwellBuffer, cmin, dc, 0, 0, correctedBlockSize);
-        worker();
+        marianiSilver(dwellBuffer, cmin, dc, 0, 0, correctedBlockSize);
     } else {
         // Traditional Mandelbrot-Set computation or the 'Escape Time' algorithm
         computeBlock(dwellBuffer, cmin, dc, 0, 0, res, 0);
