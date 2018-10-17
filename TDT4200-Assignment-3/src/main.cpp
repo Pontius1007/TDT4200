@@ -1,4 +1,3 @@
-
 #include <getopt.h>
 #include <iostream>
 #include <cmath>
@@ -13,6 +12,7 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <thread>
 
 static std::vector<std::pair<double,rgb>> colourGradient = {
         { 0.0		, { 0  , 0  , 0   } },
@@ -215,8 +215,11 @@ typedef struct job {
 
 // define mutex, condition variable and deque here
 static std::deque<job> jobs;
-std::mutex mut;
+std::mutex mlock;
 std::condition_variable cv;
+bool addedjob = false;
+std::atomic<int> numWaiting {0};
+int gnum_threads = 0;
 
 void addWork(
         std::vector<std::vector<int>> &dwellBuffer,
@@ -225,7 +228,6 @@ void addWork(
         unsigned int const atY,
         unsigned int const atX,
         unsigned int const blockSize)
-
 {
     job addJob = {
             dwellBuffer,
@@ -235,8 +237,11 @@ void addWork(
             atX,
             blockSize
     };
+    std::unique_lock<std::mutex> lock(mlock);
     jobs.push_back(addJob);
-
+    lock.unlock();
+    addedjob = true;
+    cv.notify_all();
 }
 
 void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
@@ -282,10 +287,21 @@ void help() {
 }
 
 void worker(void) {
-    while(jobs.size()) {
+    while(true) {
+        std::unique_lock<std::mutex> lock(mlock);
+            if(!jobs.size()) {
+                addedjob = false;
+            }
+        numWaiting++;
+        if (numWaiting == gnum_threads && !addedjob) {
+            break;
+        };
+        cv.wait(lock, []{return addedjob;});
         job workJob = jobs.front();
         jobs.pop_front();
+        lock.unlock();
         marianiSilver(workJob.dwellBuffer, workJob.cmin, workJob.dc, workJob.atY, workJob.atX, workJob.blockSize);
+        numWaiting--;
     }
 }
 
@@ -384,7 +400,18 @@ int main( int argc, char *argv[] )
         unsigned int const correctedBlockSize = std::pow(subDiv,numDiv) * blockDim;
         // Mariani-Silver subdivision algorithm
         addWork(dwellBuffer, cmin, dc, 0, 0, correctedBlockSize);
-        worker();
+
+        int numThreads = std::thread::hardware_concurrency();
+        gnum_threads = numThreads;
+        std::vector<std::thread> threads;
+        for (int i = 0; i < numThreads; i++) {
+            threads.push_back(std::thread(worker));
+        }
+        for(int i=0; i < numThreads; i++) {
+            threads[i].join();
+        }
+
+        //worker();
     } else {
         // Traditional Mandelbrot-Set computation or the 'Escape Time' algorithm
         computeBlock(dwellBuffer, cmin, dc, 0, 0, res, 0);
