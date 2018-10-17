@@ -215,6 +215,8 @@ typedef struct job {
 
 // define mutex, condition variable and deque here
 static std::deque<job> jobs;
+std::mutex mut;
+std::condition_variable cv;
 
 void addWork(
         std::vector<std::vector<int>> &dwellBuffer,
