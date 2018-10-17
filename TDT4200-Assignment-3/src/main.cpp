@@ -258,7 +258,7 @@ void marianiSilver( std::vector<std::vector<int>> &dwellBuffer,
         unsigned int newBlockSize = blockSize / subDiv;
         for (unsigned int ydiv = 0; ydiv < subDiv; ydiv++) {
             for (unsigned int xdiv = 0; xdiv < subDiv; xdiv++) {
-                marianiSilver(dwellBuffer, cmin, dc, atY + (ydiv * newBlockSize), atX + (xdiv * newBlockSize), newBlockSize);
+                addWork(dwellBuffer, cmin, dc, atY + (ydiv * newBlockSize), atX + (xdiv * newBlockSize), newBlockSize);
             }
         }
     }
@@ -280,7 +280,11 @@ void help() {
 }
 
 void worker(void) {
-    // Currently I'm doing nothing
+    while(jobs.size()) {
+        job workJob = jobs.front();
+        jobs.pop_front();
+        marianiSilver(workJob.dwellBuffer, workJob.cmin, workJob.dc, workJob.atY, workJob.atX, workJob.blockSize);
+    }
 }
 
 int main( int argc, char *argv[] )
@@ -377,7 +381,8 @@ int main( int argc, char *argv[] )
         // Calculate a dividable resolution for the blockSize:
         unsigned int const correctedBlockSize = std::pow(subDiv,numDiv) * blockDim;
         // Mariani-Silver subdivision algorithm
-        marianiSilver(dwellBuffer, cmin, dc, 0, 0, correctedBlockSize);
+        addWork(dwellBuffer, cmin, dc, 0, 0, correctedBlockSize);
+        worker();
     } else {
         // Traditional Mandelbrot-Set computation or the 'Escape Time' algorithm
         computeBlock(dwellBuffer, cmin, dc, 0, 0, res, 0);
