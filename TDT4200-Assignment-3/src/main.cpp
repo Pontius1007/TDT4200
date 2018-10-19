@@ -114,24 +114,23 @@ int commonBorder(std::vector<std::vector<int>> &dwellBuffer,
     #pragma omp parallel for
     for (unsigned int i = 0; i < blockSize; i++) {
         for (unsigned int s = 0; s < 4; s++) {
+            if(abort) continue;
             unsigned const int y = s % 2 == 0 ? atY + i : (s == 1 ? yMax : atY);
             unsigned const int x = s % 2 != 0 ? atX + i : (s == 0 ? xMax : atX);
-            if(!abort){
-                if (y < res && x < res) {
-                    if (dwellBuffer.at(y).at(x) < 0) {
-                        dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
-                    }
-                    if (commonDwell == -1) {
-                        commonDwell = dwellBuffer.at(y).at(x);
-                    }
-                    else if (commonDwell != dwellBuffer.at(y).at(x)) {
-                        abort = 1;
-                        commonDwell = -1;
-                    }
+            if (y < res && x < res) {
+                if (dwellBuffer.at(y).at(x) < 0) {
+                    dwellBuffer.at(y).at(x) = pixelDwell(cmin, dc, y, x);
+                }
+                if (commonDwell == -1) {
+                    commonDwell = dwellBuffer.at(y).at(x);
+                }
+                else if (commonDwell != dwellBuffer.at(y).at(x)) {
+                    abort = 1;
                 }
             }
         }
     }
+    if(abort) return -1;
     return commonDwell;
 }
 
@@ -387,6 +386,7 @@ int main( int argc, char *argv[] )
     unsigned char *pixel = &(frameBuffer.at(0));
 
     // Map the dwellBuffer to the frameBuffer
+    #pragma omp parallel for
     for (unsigned int y = 0; y < res; y++) {
         for (unsigned int x = 0; x < res; x++) {
             // Getting a colour from the map depending on the dwell value and
@@ -395,7 +395,12 @@ int main( int argc, char *argv[] )
             rgba const &colour = dwellColor(std::complex<double>(x,y), dwellBuffer.at(y).at(x));
             // class rgba provides a method to directly write a colour into a
             // framebuffer. The address to the next pixel is hereby returned
-            pixel = colour.putFramebuffer(pixel);
+            // We remove this since it gets messed up by doing it in parallel:
+            //pixel = colour.putFramebuffer(pixel);
+            frameBuffer.at((y*res+x)*4) = colour.r;
+            frameBuffer.at((y*res+x)*4+1) = colour.g;
+            frameBuffer.at((y*res+x)*4+2) = colour.b;
+            frameBuffer.at((y*res+x)*4+3) = colour.a;
         }
     }
 
